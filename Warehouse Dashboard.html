@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Warehouse Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary:      #0d1117;
+            --sidebar-bg:   #161b22;
+            --panel-bg:     #1c2333;
+            --border:       #30363d;
+            --inbound:      #f0a500;
+            --outbound:     #3182ce;
+            --success:      #22c55e;
+            --warning:      #f59e0b;
+            --danger:       #ef4444;
+            --muted:        #8b949e;
+            --text:         #e6edf3;
+            --sidebar-w:    320px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Barlow Condensed', 'Segoe UI', sans-serif;
+            background: var(--primary);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* ── SIDEBAR ─────────────────────────────────────────── */
+        #sidebar {
+            width: var(--sidebar-w);
+            min-width: var(--sidebar-w);
+            background: var(--sidebar-bg);
+            border-right: 2px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            transition: width 0.35s cubic-bezier(.4,0,.2,1),
+                        min-width 0.35s cubic-bezier(.4,0,.2,1),
+                        opacity 0.25s ease;
+            overflow: hidden;
+            z-index: 100;
+        }
+
+        #sidebar.collapsed { width: 0; min-width: 0; opacity: 0; }
+
+        .sidebar-inner {
+            width: var(--sidebar-w);
+            padding: 20px 18px;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        /* brand */
+        .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+
+        .brand-icon {
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, var(--inbound) 50%, var(--outbound) 50%);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; flex-shrink: 0;
+        }
+
+        .brand h1 {
+            font-size: 22px; font-weight: 900;
+            letter-spacing: 1px; line-height: 1;
+            text-transform: uppercase; color: var(--text);
+        }
+
+        #syncStatus {
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 0.5px;
+            color: var(--muted);
+            margin-bottom: 14px;
+            padding-left: 2px;
+        }
+
+        /* ── SHIFT SUMMARY ───────────────────────────────────── */
+        #shift-summary {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 14px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .summary-col {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .summary-col-label {
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding-bottom: 4px;
+            border-bottom: 1.5px solid var(--border);
+        }
+
+        .summary-col-label.inbound  { color: var(--inbound); }
+        .summary-col-label.outbound { color: var(--outbound); }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+
+        .summary-val { font-size: 20px; font-weight: 900; line-height: 1; }
+        .summary-val.inbound  { color: var(--inbound); }
+        .summary-val.outbound { color: var(--outbound); }
+        .summary-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* ── MODE TOGGLE ─────────────────────────────────────── */
+        .mode-toggle {
+            display: flex;
+            background: var(--primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 3px;
+            margin-bottom: 14px;
+            gap: 3px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 9px 6px;
+            border: none;
+            border-radius: 6px;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            background: transparent;
+            color: var(--muted);
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .mode-btn.active-inbound  { background: var(--inbound);  color: #000; }
+        .mode-btn.active-outbound { background: var(--outbound); color: #fff; }
+
+        /* ── CONTROL PANEL ───────────────────────────────────── */
+        .control-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 14px;
+        }
+
+        .panel-mode { display: none; }
+        .panel-mode.active { display: block; }
+
+        .control-panel label {
+            font-size: 11px;
+            color: var(--muted);
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .control-panel input,
+        .control-panel select {
+            width: 100%;
+            padding: 10px 12px;
+            background: #0d1117;
+            border: 1.5px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            transition: border-color 0.2s;
+        }
+
+        .control-panel input:focus,
+        .control-panel select:focus { outline: none; }
+
+        #inbound-panel input:focus,
+        #inbound-panel select:focus { border-color: var(--inbound); }
+
+        #outbound-panel input:focus,
+        #outbound-panel select:focus { border-color: var(--outbound); }
+
+        .control-panel input::placeholder { color: #444; }
+
+        .btn-row { display: flex; gap: 8px; }
+
+        .btn {
+            flex: 1;
+            padding: 12px 8px;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: opacity 0.15s, transform 0.1s;
+        }
+
+        .btn:hover  { opacity: 0.88; }
+        .btn:active { transform: scale(0.97); }
+
+        .btn-start-inbound  { background: var(--success);  color: #fff; }
+        .btn-start-outbound { background: var(--success);  color: #fff; }
+        .btn-close-rec  { background: #374151; color: #fff; }
+        .btn-close-wave { background: #374151; color: #fff; }
+
+        .saving-indicator {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 8px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .saving-indicator.visible { display: flex; }
+
+        .spinner {
+            width: 13px; height: 13px;
+            border: 2px solid var(--border);
+            border-top-color: var(--inbound);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        .spinner.outbound { border-top-color: var(--outbound); }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* log buttons */
+        .btn-log-inbound {
+            background: var(--inbound); color: #000;
+            font-weight: 900; width: 100%; padding: 11px;
+            border: none; border-radius: 8px; cursor: pointer;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 14px; font-weight: 700; text-transform: uppercase;
+            margin-bottom: 8px; transition: opacity 0.15s;
+        }
+
+        .btn-log-outbound {
+            background: var(--outbound); color: #fff;
+            font-weight: 900; width: 100%; padding: 11px;
+            border: none; border-radius: 8px; cursor: pointer;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 14px; font-weight: 700; text-transform: uppercase;
+            margin-bottom: 0; transition: opacity 0.15s;
+        }
+
+        .btn-log-inbound:hover,
+        .btn-log-outbound:hover { opacity: 0.85; }
+
+        .log-btn-group { margin-top: auto; padding-top: 10px; }
+
+        /* ── TOGGLE BUTTON ───────────────────────────────────── */
+        #toggle-btn {
+            position: fixed;
+            top: 18px; left: 18px;
+            z-index: 200;
+            width: 38px; height: 38px;
+            background: var(--panel-bg);
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 18px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s, left 0.35s cubic-bezier(.4,0,.2,1);
+        }
+
+        #toggle-btn:hover { background: var(--border); }
+        body.sidebar-open #toggle-btn { left: calc(var(--sidebar-w) + 14px); }
+
+        /* ── VIEWPORT ────────────────────────────────────────── */
+        #viewport {
+            flex-grow: 1;
+            padding: 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        /* section headers */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 4px 10px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: var(--primary);
+        }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .section-title.inbound  { color: var(--inbound); }
+        .section-title.outbound { color: var(--outbound); }
+
+        .section-line {
+            flex: 1;
+            height: 1.5px;
+        }
+
+        .section-line.inbound  { background: var(--inbound);  opacity: 0.3; }
+        .section-line.outbound { background: var(--outbound); opacity: 0.3; }
+
+        .section-stats {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stat-pill {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 5px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .stat-pill.inbound  { background: rgba(240,165,0,0.12);  }
+        .stat-pill.outbound { background: rgba(49,130,206,0.12); }
+
+        .stat-val {
+            font-size: 16px;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .stat-val.inbound  { color: var(--inbound); }
+        .stat-val.outbound { color: var(--outbound); }
+
+        .stat-lbl {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+        }
+
+        .stat-sep {
+            width: 1px;
+            height: 16px;
+            background: var(--border);
+        }
+
+        /* card grids inside sections */
+        .section-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 480px));
+            gap: 18px;
+            padding-bottom: 22px;
+        }
+
+        .section-empty {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            padding: 18px 4px 28px;
+            opacity: 0.5;
+        }
+
+        /* active badge */
+        #active-badge {
+            position: fixed;
+            top: 18px; right: 22px;
+            background: var(--panel-bg);
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            padding: 5px 14px;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--muted);
+            font-family: 'JetBrains Mono', monospace;
+            z-index: 150;
+            display: flex; align-items: center; gap: 10px;
+        }
+
+        .badge-seg { display: flex; align-items: center; gap: 5px; }
+        .badge-count { font-size: 20px; font-weight: 900; line-height: 1; }
+        .badge-count.inbound  { color: var(--inbound); }
+        .badge-count.outbound { color: var(--outbound); }
+        .badge-divider { width: 1px; height: 20px; background: var(--border); }
+
+        /* ── CARDS ───────────────────────────────────────────── */
+        .dash-card {
+            border-radius: 16px;
+            padding: 0;
+            border: 2.5px solid rgba(255,255,255,0.08);
+            position: relative;
+            cursor: pointer;
+            box-shadow: none;
+            transition: border-color 0.3s, transform 0.2s;
+            overflow: hidden;
+        }
+
+        .dash-card:hover { transform: translateY(-2px); }
+
+        .dash-card.selected-card {
+            border: 3px solid rgba(255,255,255,0.7) !important;
+            box-shadow: 0 0 28px rgba(255,255,255,0.15);
+        }
+
+        /* coloured top accent bar */
+        .card-accent {
+            height: 5px;
+            width: 100%;
+        }
+
+        .card-accent.inbound  { background: var(--inbound); }
+        .card-accent.outbound { background: var(--outbound); }
+
+        .card-body { padding: 20px 22px 18px; }
+
+        .warning-amber { box-shadow: 0 0 22px rgba(245,158,11,0.55); }
+
+        .warning-red   { box-shadow: 0 0 28px rgba(239,68,68,0.75); }
+
+        .card-enter { /* entry animation removed for stability */ }
+
+        /* card layout */
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 2px;
+        }
+
+        .card-type-label {
+            font-size: 11px; font-weight: 900;
+            text-transform: uppercase; letter-spacing: 2px;
+            opacity: 0.8;
+        }
+
+        .card-type-label.inbound  { color: var(--inbound); }
+        .card-type-label.outbound { color: var(--outbound); }
+
+        .sla-tag {
+            background: rgba(0,0,0,0.3);
+            padding: 3px 9px;
+            border-radius: 5px;
+            font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
+        }
+
+        .id-val {
+            font-size: 80px; font-weight: 900;
+            line-height: 0.9; letter-spacing: -2px;
+            margin: 4px 0 8px;
+            text-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+
+        .info-row {
+            display: flex; align-items: center;
+            gap: 8px; margin-bottom: 6px; flex-wrap: wrap;
+        }
+
+        .info-chip {
+            background: rgba(0,0,0,0.3);
+            padding: 4px 11px; border-radius: 6px;
+            font-size: 16px; font-weight: 700; letter-spacing: 0.5px;
+        }
+
+        .sub-chip {
+            font-size: 12px; font-weight: 700;
+            text-transform: uppercase; opacity: 0.75; letter-spacing: 0.5px;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-top: 6px;
+        }
+
+        .timer-block  { display: flex; flex-direction: column; }
+        .timer-label  { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.65; margin-bottom: 1px; }
+        .timer-val    { font-family: 'JetBrains Mono', monospace; font-size: 56px; font-weight: 700; line-height: 1; }
+
+        .remaining-block { display: flex; flex-direction: column; align-items: flex-end; }
+        .remaining-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; opacity: 0.65; margin-bottom: 1px; }
+        .remaining-val   { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 700; line-height: 1; }
+        .remaining-val.overdue { color: #fca5a5; }
+
+        .card-close-btn {
+            position: absolute;
+            top: 14px; right: 12px;
+            width: 26px; height: 26px;
+            background: rgba(0,0,0,0.35);
+            border: 1.5px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            color: rgba(255,255,255,0.7);
+            font-size: 13px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s, color 0.15s;
+            z-index: 10;
+        }
+
+        .card-close-btn:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
+
+        /* ── LOG OVERLAY ─────────────────────────────────────── */
+        .log-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.75);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .log-overlay.visible { display: flex; }
+
+        .log-modal {
+            background: #161b22;
+            border: 1.5px solid var(--border);
+            border-radius: 18px;
+            width: 92%; max-width: 1100px; max-height: 88vh;
+            display: flex; flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+        }
+
+        .log-header {
+            padding: 18px 24px;
+            border-bottom: 1.5px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .log-header h2 { font-size: 20px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
+
+        .log-close-btn {
+            background: var(--panel-bg);
+            border: 1.5px solid var(--border);
+            color: var(--text);
+            padding: 7px 16px; border-radius: 8px; cursor: pointer;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 14px; font-weight: 700; text-transform: uppercase;
+            transition: background 0.15s;
+        }
+
+        .log-close-btn:hover { background: var(--border); }
+
+        .log-body { overflow-y: auto; flex: 1; padding: 0 24px 18px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+
+        th {
+            background: var(--panel-bg); padding: 11px 13px;
+            text-align: left; font-size: 11px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px; color: var(--muted);
+            border-bottom: 1.5px solid var(--border); position: sticky; top: 0;
+        }
+
+        td { padding: 10px 13px; border-bottom: 1px solid var(--border); font-size: 15px; font-weight: 600; }
+        tr:hover td { background: rgba(255,255,255,0.03); }
+
+        /* ── CONFIRM DIALOG ──────────────────────────────────── */
+        #confirm-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 3000;
+            align-items: center; justify-content: center;
+            backdrop-filter: blur(3px);
+        }
+
+        #confirm-overlay.visible { display: flex; }
+
+        .confirm-modal {
+            background: #161b22;
+            border: 1.5px solid var(--border);
+            border-radius: 16px;
+            padding: 30px 34px;
+            max-width: 440px; width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .confirm-modal h3 { font-size: 20px; font-weight: 900; margin-bottom: 6px; text-transform: uppercase; }
+        .confirm-modal p  { font-size: 15px; color: var(--muted); margin-bottom: 20px; }
+
+        .confirm-item-info {
+            background: var(--panel-bg);
+            border: 1.5px solid var(--border);
+            border-radius: 10px; padding: 13px;
+            margin-bottom: 22px; font-size: 17px; font-weight: 700;
+        }
+
+        .confirm-btn-row { display: flex; gap: 10px; }
+
+        .btn-confirm-yes {
+            flex: 1; padding: 13px; border: none; border-radius: 8px;
+            background: var(--danger); color: #fff;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 17px; font-weight: 900; text-transform: uppercase;
+            cursor: pointer; transition: opacity 0.15s;
+        }
+
+        .btn-confirm-no {
+            flex: 1; padding: 13px; border: none; border-radius: 8px;
+            background: #374151; color: #fff;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 17px; font-weight: 900; text-transform: uppercase;
+            cursor: pointer; transition: opacity 0.15s;
+        }
+
+        .btn-confirm-yes:hover,
+        .btn-confirm-no:hover { opacity: 0.85; }
+
+        /* scrollbar */
+        ::-webkit-scrollbar            { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track      { background: transparent; }
+        ::-webkit-scrollbar-thumb      { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover{ background: var(--muted); }
+    </style>
+</head>
+<body class="sidebar-open">
+
+<!-- Sidebar toggle -->
+<button id="toggle-btn" onclick="toggleSidebar()">☰</button>
+
+<!-- Active badge -->
+<div id="active-badge">
+    <div class="badge-seg">
+        <span class="badge-count inbound" id="badge-inbound">0</span>
+        <span style="font-size:11px;color:var(--inbound);font-weight:700;">IN</span>
+    </div>
+    <div class="badge-divider"></div>
+    <div class="badge-seg">
+        <span class="badge-count outbound" id="badge-outbound">0</span>
+        <span style="font-size:11px;color:var(--outbound);font-weight:700;">OUT</span>
+    </div>
+</div>
+
+<!-- Sidebar -->
+<div id="sidebar">
+    <div class="sidebar-inner">
+
+        <div class="brand">
+            <div class="brand-icon">🏭</div>
+            <h1>Warehouse<br>Dashboard</h1>
+        </div>
+        <div id="syncStatus">INITIALIZING...</div>
+
+        <!-- Shift Summary -->
+        <div id="shift-summary">
+            <div class="summary-col">
+                <div class="summary-col-label inbound">▼ Inbound</div>
+                <div class="summary-row">
+                    <span class="summary-lbl">Active</span>
+                    <span class="summary-val inbound" id="in-active">0</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-lbl">Closed</span>
+                    <span class="summary-val inbound" id="in-closed">0</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-lbl">Avg</span>
+                    <span class="summary-val inbound" id="in-avg">—</span>
+                </div>
+            </div>
+            <div class="summary-col">
+                <div class="summary-col-label outbound">▲ Outbound</div>
+                <div class="summary-row">
+                    <span class="summary-lbl">Active</span>
+                    <span class="summary-val outbound" id="out-active">0</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-lbl">Closed</span>
+                    <span class="summary-val outbound" id="out-closed">0</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-lbl">Auto Avg</span>
+                    <span class="summary-val outbound" id="out-avg">—</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-lbl">Manual Avg</span>
+                    <span class="summary-val outbound" id="out-avg-manual">—</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mode toggle -->
+        <div class="mode-toggle">
+            <button class="mode-btn active-inbound" id="mode-inbound" onclick="setMode('inbound')">▼ Inbound Receipt</button>
+            <button class="mode-btn" id="mode-outbound" onclick="setMode('outbound')">▲ Outbound Pull</button>
+        </div>
+
+        <!-- Control panel -->
+        <div class="control-panel">
+
+            <!-- INBOUND fields -->
+            <div class="panel-mode active" id="inbound-panel">
+                <label>Dock Door</label>
+                <input type="text" id="in-door" placeholder="Ex: D101" autocomplete="off">
+                <label>Trailer #</label>
+                <input type="text" id="in-trailer" placeholder="Ex: TR12345" autocomplete="off">
+                <label>BOL #</label>
+                <input type="text" id="in-bol" placeholder="Ex: BOL-678" autocomplete="off"
+                       onkeydown="if(event.key==='Enter') startRec()">
+                <label>Type</label>
+                <select id="in-type">
+                    <option value="Manufacturer">Manufacturer Trailer</option>
+                    <option value="Transfer">Transfer Trailer</option>
+                </select>
+                <div class="btn-row">
+                    <button class="btn btn-start-inbound" onclick="startRec()">▶ Start</button>
+                    <button class="btn btn-close-rec" onclick="initiateCloseRec()">■ Close</button>
+                </div>
+                <div class="saving-indicator" id="in-saving">
+                    <div class="spinner"></div><span>Saving...</span>
+                </div>
+            </div>
+
+            <!-- OUTBOUND fields -->
+            <div class="panel-mode" id="outbound-panel">
+                <label>Pull ID</label>
+                <input type="text" id="out-id" placeholder="Ex: 123" autocomplete="off">
+                <label>Total Pull Quantity</label>
+                <input type="number" id="out-qty" placeholder="0" autocomplete="off">
+                <label>Pull Type</label>
+                <select id="out-type">
+                    <option value="manual">Manual (1 Hour SLA)</option>
+                    <option value="auto">Auto (5 Hour SLA)</option>
+                </select>
+                <div class="btn-row">
+                    <button class="btn btn-start-outbound" onclick="startWave()">▶ Start</button>
+                    <button class="btn btn-close-wave" onclick="initiateCloseWave()">■ Close</button>
+                </div>
+                <div class="saving-indicator" id="out-saving">
+                    <div class="spinner outbound"></div><span>Saving...</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Log buttons -->
+        <div class="log-btn-group">
+            <button class="btn-log-inbound"  onclick="toggleLog('inbound')">📋 Inbound History</button>
+            <button class="btn-log-outbound" onclick="toggleLog('outbound')">📋 Outbound History</button>
+        </div>
+
+    </div>
+</div>
+
+<!-- Viewport -->
+<div id="viewport">
+
+    <!-- Inbound section -->
+    <div class="section-header">
+        <span class="section-title inbound">▼ Inbound Receipts</span>
+        <div class="section-stats">
+            <div class="stat-pill inbound">
+                <span class="stat-val inbound" id="sec-in-active">0</span>
+                <span class="stat-lbl">Active</span>
+            </div>
+            <div class="stat-sep"></div>
+            <div class="stat-pill inbound">
+                <span class="stat-val inbound" id="sec-in-closed">0</span>
+                <span class="stat-lbl">Closed</span>
+            </div>
+            <div class="stat-sep"></div>
+            <div class="stat-pill inbound">
+                <span class="stat-val inbound" id="sec-in-avg">—</span>
+                <span class="stat-lbl">Avg</span>
+            </div>
+        </div>
+        <div class="section-line inbound"></div>
+    </div>
+    <div class="section-grid" id="grid-inbound">
+        <div class="section-empty" id="empty-inbound">No active inbound receipts</div>
+    </div>
+
+    <!-- Outbound section -->
+    <div class="section-header">
+        <span class="section-title outbound">▲ Outbound Pulls</span>
+        <div class="section-stats">
+            <div class="stat-pill outbound">
+                <span class="stat-val outbound" id="sec-out-active">0</span>
+                <span class="stat-lbl">Active</span>
+            </div>
+            <div class="stat-sep"></div>
+            <div class="stat-pill outbound">
+                <span class="stat-val outbound" id="sec-out-closed">0</span>
+                <span class="stat-lbl">Closed</span>
+            </div>
+            <div class="stat-sep"></div>
+            <div class="stat-pill outbound">
+                <span class="stat-val outbound" id="sec-out-avg-auto">—</span>
+                <span class="stat-lbl">Auto Avg</span>
+            </div>
+            <div class="stat-sep"></div>
+            <div class="stat-pill outbound">
+                <span class="stat-val outbound" id="sec-out-avg-manual">—</span>
+                <span class="stat-lbl">Manual Avg</span>
+            </div>
+        </div>
+        <div class="section-line outbound"></div>
+    </div>
+    <div class="section-grid" id="grid-outbound">
+        <div class="section-empty" id="empty-outbound">No active outbound pulls</div>
+    </div>
+
+</div>
+
+<!-- Inbound Log Overlay -->
+<div class="log-overlay" id="log-inbound">
+    <div class="log-modal">
+        <div class="log-header" style="border-top: 4px solid var(--inbound); border-radius: 16px 16px 0 0;">
+            <h2 style="color:var(--inbound);">▼ Inbound Receiving History</h2>
+            <div style="display:flex;gap:10px;">
+                <button class="log-close-btn" onclick="exportCSV('inbound')" style="background:var(--inbound);border-color:var(--inbound);color:#000;">⬇ Export CSV</button>
+                <button class="log-close-btn" onclick="toggleLog('inbound')">✕ Close</button>
+            </div>
+        </div>
+        <div class="log-body">
+            <table>
+                <thead><tr>
+                    <th>Door</th><th>Trailer</th><th>BOL</th><th>Type</th>
+                    <th>Started</th><th>Ended</th><th>Duration</th>
+                </tr></thead>
+                <tbody id="log-inbound-body"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Outbound Log Overlay -->
+<div class="log-overlay" id="log-outbound">
+    <div class="log-modal">
+        <div class="log-header" style="border-top: 4px solid var(--outbound); border-radius: 16px 16px 0 0;">
+            <h2 style="color:var(--outbound);">▲ Outbound Pull History</h2>
+            <div style="display:flex;gap:10px;">
+                <button class="log-close-btn" onclick="exportCSV('outbound')" style="background:var(--outbound);border-color:var(--outbound);color:#fff;">⬇ Export CSV</button>
+                <button class="log-close-btn" onclick="toggleLog('outbound')">✕ Close</button>
+            </div>
+        </div>
+        <div class="log-body">
+            <table>
+                <thead><tr>
+                    <th>Wave ID</th><th>Type</th><th>Qty</th>
+                    <th>Started</th><th>Completed</th><th>Duration</th>
+                </tr></thead>
+                <tbody id="log-outbound-body"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm Dialog -->
+<div id="confirm-overlay">
+    <div class="confirm-modal">
+        <h3 id="confirm-title">Archive?</h3>
+        <p id="confirm-sub">This will stop tracking and archive the record.</p>
+        <div class="confirm-item-info" id="confirm-info">—</div>
+        <div class="confirm-btn-row">
+            <button class="btn-confirm-no"  onclick="hideConfirm()">Cancel</button>
+            <button class="btn-confirm-yes" onclick="confirmClose()">Archive It</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ── API ENDPOINTS ───────────────────────────────────────
+    const REC_API  = "https://script.google.com/macros/s/AKfycbzlqj_tnDRI6tGDy5MCjyq3XovJmoTCWhvhZqHKMjuDDjil7j6kcwyGHrjGnbYhXURaow/exec";
+    const PULL_API = "https://script.google.com/macros/s/AKfycbxHR1-V7u-cF1paXo6JGAbyvljuPp5IVNT2l10vX8y-JdcO7phjMKwDTZ36eynEWWO-_w/exec";
+
+    // ── SLA THRESHOLDS ──────────────────────────────────────
+    // Inbound (all trailers): green→yellow 2h, yellow→red+flash 4h, true 5h
+    const REC_SLA = { amber: 7200000, red: 14400000, true: 18000000 };
+
+    // Outbound per pull type
+    const PULL_SLA = {
+        manual: { amber: 1800000,  red: 2700000,  true: 3600000  },
+        auto:   { amber: 7200000,  red: 14400000, true: 18000000 }
+    };
+
+    let activeRecs  = {};   // inbound
+    let activeWaves = {};   // outbound
+    let pendingClose = null;
+    let currentMode  = 'inbound';
+
+    // ── SIDEBAR & MODE ──────────────────────────────────────
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+        document.body.classList.toggle('sidebar-open');
+    }
+
+    function setMode(mode) {
+        currentMode = mode;
+        document.getElementById('inbound-panel').classList.toggle('active', mode === 'inbound');
+        document.getElementById('outbound-panel').classList.toggle('active', mode === 'outbound');
+        document.getElementById('mode-inbound').className  = 'mode-btn' + (mode === 'inbound'  ? ' active-inbound'  : '');
+        document.getElementById('mode-outbound').className = 'mode-btn' + (mode === 'outbound' ? ' active-outbound' : '');
+    }
+
+    // ── SYNC BOTH APIs ──────────────────────────────────────
+    async function syncAll() {
+        let online = false;
+        try {
+            const r = await fetch(`${REC_API}?action=GET_ACTIVE&t=${Date.now()}`);
+            activeRecs = await r.json();
+            online = true;
+        } catch { activeRecs = {}; }
+
+        try {
+            const r = await fetch(`${PULL_API}?action=GET_ACTIVE&t=${Date.now()}`);
+            activeWaves = await r.json();
+            online = true;
+        } catch { activeWaves = {}; }
+
+        const ts = new Date().toLocaleTimeString();
+        document.getElementById('syncStatus').innerText  = online ? `● ONLINE — ${ts}` : '● OFFLINE';
+        document.getElementById('syncStatus').style.color = online ? 'var(--success)' : 'var(--danger)';
+
+        updateSummary();
+    }
+
+    // ── SHIFT SUMMARY ──────────────────────────────────────
+    async function updateSummary() {
+        document.getElementById('in-active').innerText  = Object.keys(activeRecs).length;
+        document.getElementById('out-active').innerText = Object.keys(activeWaves).length;
+
+        try {
+            const r    = await fetch(`${REC_API}?action=GET_LOG&t=${Date.now()}`);
+            const data = await r.json();
+            const rows = data.slice(1);
+            document.getElementById('in-closed').innerText     = rows.length;
+            document.getElementById('sec-in-closed').innerText = rows.length;
+            const durs = rows.map(r => parseDuration(r[6])).filter(d => d > 0);
+            if (durs.length) {
+                const avg = Math.round(durs.reduce((a,b)=>a+b,0)/durs.length);
+                document.getElementById('in-avg').innerText     = fmtAvg(avg);
+                document.getElementById('sec-in-avg').innerText = fmtAvg(avg);
+            }
+        } catch {}
+
+        try {
+            const r    = await fetch(`${PULL_API}?action=GET_LOG&t=${Date.now()}`);
+            const data = await r.json();
+            const rows = data.slice(1);
+            document.getElementById('out-closed').innerText     = rows.length;
+            document.getElementById('sec-out-closed').innerText = rows.length;
+
+            const autoDurs   = rows.filter(r => r[1] === 'auto')  .map(r => parseDuration(r[5])).filter(d => d > 0);
+            const manualDurs = rows.filter(r => r[1] === 'manual').map(r => parseDuration(r[5])).filter(d => d > 0);
+
+            const autoAvg   = autoDurs.length   ? Math.round(autoDurs.reduce((a,b)=>a+b,0)   / autoDurs.length)   : null;
+            const manualAvg = manualDurs.length ? Math.round(manualDurs.reduce((a,b)=>a+b,0) / manualDurs.length) : null;
+
+            document.getElementById('out-avg').innerText             = autoAvg   ? fmtAvg(autoAvg)   : '—';
+            document.getElementById('out-avg-manual').innerText       = manualAvg ? fmtAvg(manualAvg) : '—';
+            document.getElementById('sec-out-avg-auto').innerText    = autoAvg   ? fmtAvg(autoAvg)   : '—';
+            document.getElementById('sec-out-avg-manual').innerText  = manualAvg ? fmtAvg(manualAvg) : '—';
+        } catch {}
+    }
+
+    function parseDuration(str) {
+        if (!str) return 0;
+        const m = str.match(/(\d+)/g);
+        if (!m) return 0;
+        if (str.includes('h') && m.length >= 2) return parseInt(m[0])*60 + parseInt(m[1]);
+        return parseInt(m[0]);
+    }
+
+    function fmtAvg(min) {
+        return min >= 60 ? `${Math.floor(min/60)}h${min%60}m` : `${min}m`;
+    }
+
+    // ── INBOUND: START ──────────────────────────────────────
+    async function startRec() {
+        const door    = document.getElementById('in-door').value.trim();
+        const trailer = document.getElementById('in-trailer').value.trim();
+        const bol     = document.getElementById('in-bol').value.trim();
+        const type    = document.getElementById('in-type').value;
+        if (!door || !trailer) { alert('Dock Door and Trailer # are required.'); return; }
+
+        setSaving('inbound', true);
+        await fetch(REC_API, {
+            method: 'POST',
+            body: JSON.stringify({ action:'START_REC', door, trailer, bol, type, startTime: Date.now() }),
+            mode: 'no-cors'
+        });
+        document.getElementById('in-door').value    = '';
+        document.getElementById('in-trailer').value = '';
+        document.getElementById('in-bol').value     = '';
+        setTimeout(() => { syncAll(); setSaving('inbound', false); }, 2500);
+    }
+
+    // ── INBOUND: CLOSE ──────────────────────────────────────
+    function initiateCloseRec() {
+        const trailerVal = document.getElementById('in-trailer').value.trim();
+        if (!trailerVal) { alert('Select an active receipt card or enter a Trailer # to close.'); return; }
+        const key = Object.keys(activeRecs).find(k => activeRecs[k].trailer === trailerVal || k === trailerVal);
+        if (!key) { alert('No active receipt found for that Trailer #.'); return; }
+        pendingClose = { kind: 'rec', key, item: activeRecs[key] };
+        showConfirm('rec', activeRecs[key]);
+    }
+
+    function initiateCloseRecByKey(key) {
+        pendingClose = { kind: 'rec', key, item: activeRecs[key] };
+        showConfirm('rec', activeRecs[key]);
+    }
+
+    // ── OUTBOUND: START ─────────────────────────────────────
+    async function startWave() {
+        const id   = document.getElementById('out-id').value.trim();
+        const qty  = document.getElementById('out-qty').value;
+        const type = document.getElementById('out-type').value;
+        if (!id) { alert('Please enter a Pull ID.'); return; }
+
+        setSaving('outbound', true);
+        await fetch(PULL_API, {
+            method: 'POST',
+            body: JSON.stringify({ action:'START_WAVE', id, qty, type, startTime: Date.now() }),
+            mode: 'no-cors'
+        });
+        document.getElementById('out-id').value  = '';
+        document.getElementById('out-qty').value = '';
+        setTimeout(() => { syncAll(); setSaving('outbound', false); }, 2500);
+    }
+
+    // ── OUTBOUND: CLOSE ─────────────────────────────────────
+    function initiateCloseWave() {
+        const idVal = document.getElementById('out-id').value.trim();
+        if (!idVal) { alert('Select an active pull card or enter a Pull ID to close.'); return; }
+        if (!activeWaves[idVal]) { alert('No active pull found for that ID.'); return; }
+        pendingClose = { kind: 'wave', key: idVal, item: activeWaves[idVal] };
+        showConfirm('wave', activeWaves[idVal]);
+    }
+
+    function initiateCloseWaveById(id) {
+        pendingClose = { kind: 'wave', key: id, item: activeWaves[id] };
+        showConfirm('wave', activeWaves[id]);
+    }
+
+    // ── CONFIRM DIALOG ──────────────────────────────────────
+    function showConfirm(kind, item) {
+        document.getElementById('confirm-title').innerText = kind === 'rec' ? 'Close Receipt?' : 'Complete Pull?';
+        document.getElementById('confirm-sub').innerText   = 'This will archive the record and stop tracking.';
+        document.getElementById('confirm-info').innerHTML  = kind === 'rec'
+            ? `Door <strong>${item.door}</strong> &nbsp;·&nbsp; Trailer <strong>${item.trailer}</strong>` + (item.bol ? ` &nbsp;·&nbsp; BOL <strong>${item.bol}</strong>` : '')
+            : `Pull ID <strong>#${item.id}</strong> &nbsp;·&nbsp; <strong>${item.type === 'manual' ? 'Manual' : 'Auto'}</strong>` + (item.qty ? ` &nbsp;·&nbsp; QTY <strong>${item.qty}</strong>` : '');
+        document.getElementById('confirm-overlay').classList.add('visible');
+    }
+
+    function hideConfirm() {
+        document.getElementById('confirm-overlay').classList.remove('visible');
+        pendingClose = null;
+    }
+
+    async function confirmClose() {
+        if (!pendingClose) return;
+        const { kind, key, item } = pendingClose;  // capture BEFORE hideConfirm nulls it
+        hideConfirm();
+        const elapsed  = Date.now() - item.startTime;
+        const totalMin = Math.floor(elapsed / 60000);
+        const duration = totalMin >= 60 ? `${Math.floor(totalMin/60)}h ${totalMin%60}m` : `${totalMin}m`;
+
+        if (kind === 'rec') {
+            setSaving('inbound', true);
+            await fetch(REC_API, {
+                method: 'POST',
+                body: JSON.stringify({ action:'CLOSE_REC', trailer: item.trailer, key, endTime: Date.now(), duration }),
+                mode: 'no-cors'
+            });
+            document.getElementById('in-trailer').value = '';
+            document.getElementById('in-door').value    = '';
+            setTimeout(() => { syncAll(); setSaving('inbound', false); }, 2500);
+        } else {
+            setSaving('outbound', true);
+            await fetch(PULL_API, {
+                method: 'POST',
+                body: JSON.stringify({ action:'CLOSE_WAVE', id: key, endTime: Date.now(), duration }),
+                mode: 'no-cors'
+            });
+            document.getElementById('out-id').value  = '';
+            document.getElementById('out-qty').value = '';
+            setTimeout(() => { syncAll(); setSaving('outbound', false); }, 2500);
+        }
+    }
+
+    function setSaving(which, on) {
+        document.getElementById(which === 'inbound' ? 'in-saving' : 'out-saving')
+            .classList.toggle('visible', on);
+    }
+
+    // ── RENDER (two sections, each urgency-sorted) ──────────
+    function renderAll() {
+        const now = Date.now();
+
+        // build & sort inbound
+        const inItems = Object.keys(activeRecs).map(key => {
+            const item = activeRecs[key];
+            const elapsed = now - item.startTime;
+            return { kind:'rec', key, item, elapsed, urgency: elapsed / REC_SLA.red };
+        }).sort((a,b) => b.urgency - a.urgency);
+
+        // build & sort outbound
+        const outItems = Object.keys(activeWaves).map(id => {
+            const item = activeWaves[id];
+            const tholds = PULL_SLA[item.type] || PULL_SLA.auto;
+            const elapsed = now - item.startTime;
+            return { kind:'wave', key: id, item, elapsed, urgency: elapsed / tholds.red };
+        }).sort((a,b) => b.urgency - a.urgency);
+
+        // badges & counts
+        document.getElementById('badge-inbound').innerText  = inItems.length;
+        document.getElementById('badge-outbound').innerText = outItems.length;
+        document.getElementById('in-active').innerText      = inItems.length;
+        document.getElementById('out-active').innerText     = outItems.length;
+        document.getElementById('sec-in-active').innerText  = inItems.length;
+        document.getElementById('sec-out-active').innerText = outItems.length;
+
+        // empty messages
+        document.getElementById('empty-inbound').style.display  = inItems.length  ? 'none' : 'block';
+        document.getElementById('empty-outbound').style.display = outItems.length ? 'none' : 'block';
+
+        // shared render helper
+        function renderSection(items, gridId) {
+            const grid = document.getElementById(gridId);
+
+            // remove stale cards
+            grid.querySelectorAll('.dash-card').forEach(card => {
+                if (!items.some(x => x.kind+'|'+x.key === card.dataset.cardid)) card.remove();
+            });
+
+            items.forEach(({ kind, key, item, elapsed }) => {
+                const tholds = kind === 'rec' ? REC_SLA : (PULL_SLA[item.type] || PULL_SLA.auto);
+
+                // colour zone
+                let zoneColor;
+                if      (elapsed >= tholds.red)   zoneColor = 'hsl(0,   62%, 28%)';
+                else if (elapsed >= tholds.amber) zoneColor = 'hsl(42,  70%, 32%)';
+                else                              zoneColor = 'hsl(128, 55%, 28%)';
+
+                // timer strings
+                const h = Math.floor(elapsed / 3600000);
+                const m = Math.floor((elapsed % 3600000) / 60000);
+                const s = Math.floor((elapsed % 60000) / 1000);
+                const elapsed_str = `${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+
+                // remaining string
+                const remain = tholds.true - elapsed;
+                const isOver = remain < 0;
+                const absRem = Math.abs(remain);
+                const rh     = Math.floor(absRem / 3600000);
+                const rm     = Math.floor((absRem % 3600000) / 60000);
+                const remain_str = (isOver ? '-' : '') + (rh > 0 ? `${rh}:${rm.toString().padStart(2,'0')}` : `${rm}m`);
+
+                const slaLabel   = kind === 'rec' ? '5H SLA · ⚡2H · 🔴4H' : (item.type === 'manual' ? '1H SLA · ⚡30M · 🔴45M' : '5H SLA · ⚡2H · 🔴4H');
+                const cardId     = `${kind}|${key}`;
+                let card = grid.querySelector(`.dash-card[data-cardid="${CSS.escape(cardId)}"]`);
+
+                if (!card) {
+                    card = document.createElement('div');
+                    card.className      = 'dash-card card-enter';
+                    card.dataset.kind   = kind;
+                    card.dataset.key    = key;
+                    card.dataset.cardid = cardId;
+                    // remove entry animation class once it finishes so it can't conflict with glow
+                    card.addEventListener('animationend', () => card.classList.remove('card-enter'), { once: true });
+
+                    const accentClass = kind === 'rec' ? 'inbound' : 'outbound';
+                    const primaryVal  = kind === 'rec' ? item.door : `#${item.id}`;
+                    const chip1       = kind === 'rec' ? item.trailer : (item.qty ? `QTY: ${item.qty}` : 'QTY: —');
+                    const chip2       = kind === 'rec' ? item.type    : (item.type === 'manual' ? 'Manual' : 'Auto');
+                    const bolLine     = (kind === 'rec' && item.bol)
+                        ? `<div style="font-size:13px;opacity:0.65;font-weight:600;margin-bottom:5px;">BOL: ${item.bol}</div>` : '';
+                    const closeCall   = kind === 'rec' ? `initiateCloseRecByKey('${key}')` : `initiateCloseWaveById('${key}')`;
+                    const selectCall  = kind === 'rec'
+                        ? `document.getElementById('in-trailer').value='${item.trailer}';document.getElementById('in-door').value='${item.door}';setMode('inbound');`
+                        : `document.getElementById('out-id').value='${key}';setMode('outbound');`;
+
+                    card.innerHTML = `
+                        <div class="card-accent ${accentClass}"></div>
+                        <div class="card-body">
+                            <button class="card-close-btn" onclick="${closeCall}">✕</button>
+                            <div class="card-header">
+                                <div class="card-type-label ${accentClass}">${kind === 'rec' ? '▼ Inbound Receipt' : '▲ Outbound Pull'}</div>
+                                <div class="sla-tag">${slaLabel}</div>
+                            </div>
+                            <div class="id-val">${primaryVal}</div>
+                            <div class="info-row">
+                                <div class="info-chip">${chip1}</div>
+                                <span class="sub-chip">${chip2}</span>
+                            </div>
+                            ${bolLine}
+                            <div class="card-footer">
+                                <div class="timer-block">
+                                    <div class="timer-label">Elapsed</div>
+                                    <div class="timer-val" data-elapsed></div>
+                                </div>
+                                <div class="remaining-block">
+                                    <div class="remaining-label" data-rem-label></div>
+                                    <div class="remaining-val" data-rem-val></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    card.onclick = (e) => {
+                        if (e.target.classList.contains('card-close-btn')) return;
+                        document.querySelectorAll('.dash-card').forEach(c => c.classList.remove('selected-card'));
+                        card.classList.add('selected-card');
+                        eval(selectCall);
+                    };
+
+                    grid.appendChild(card);
+                }
+
+                // update dynamic parts only
+                card.querySelector('[data-elapsed]').innerText   = elapsed_str;
+                card.querySelector('[data-rem-label]').innerText = isOver ? 'Overdue' : 'Remaining';
+                const remEl = card.querySelector('[data-rem-val]');
+                remEl.innerText = remain_str;
+                remEl.className = 'remaining-val' + (isOver ? ' overdue' : '');
+
+                if (card.style.backgroundColor !== zoneColor) card.style.backgroundColor = zoneColor;
+
+                // glow classes — CSS-only, won't be disrupted by render updates
+                const needsRed   = elapsed >= tholds.red;
+                const needsAmber = !needsRed && elapsed >= tholds.amber;
+                if (needsRed && !card.classList.contains('warning-red')) {
+                    card.classList.remove('warning-amber');
+                    card.classList.add('warning-red');
+                } else if (needsAmber && !card.classList.contains('warning-amber')) {
+                    card.classList.remove('warning-red');
+                    card.classList.add('warning-amber');
+                } else if (!needsRed && !needsAmber) {
+                    card.classList.remove('warning-red', 'warning-amber');
+                }
+            });
+
+            // re-sort DOM order within grid to match urgency
+            [...grid.querySelectorAll('.dash-card')]
+                .sort((a,b) => {
+                    const ai = items.findIndex(x => x.kind+'|'+x.key === a.dataset.cardid);
+                    const bi = items.findIndex(x => x.kind+'|'+x.key === b.dataset.cardid);
+                    return ai - bi;
+                })
+                .forEach(card => grid.appendChild(card));
+        }
+
+        renderSection(inItems,  'grid-inbound');
+        renderSection(outItems, 'grid-outbound');
+    }
+
+    // ── LOG OVERLAYS ────────────────────────────────────────
+    async function toggleLog(which) {
+        const overlay = document.getElementById(`log-${which}`);
+        overlay.classList.toggle('visible');
+        if (!overlay.classList.contains('visible')) return;
+
+        const bodyId = `log-${which}-body`;
+        const cols   = which === 'inbound' ? 7 : 6;
+        document.getElementById(bodyId).innerHTML =
+            `<tr><td colspan="${cols}" style="text-align:center;color:var(--muted);">Loading...</td></tr>`;
+
+        try {
+            const api = which === 'inbound' ? REC_API : PULL_API;
+            const res = await fetch(`${api}?action=GET_LOG&t=${Date.now()}`);
+            const data = await res.json();
+            const logs = data.slice(1).reverse();
+
+            if (!logs.length) {
+                document.getElementById(bodyId).innerHTML =
+                    `<tr><td colspan="${cols}" style="text-align:center;color:var(--muted);">No archived records found.</td></tr>`;
+                return;
+            }
+
+            document.getElementById(bodyId).innerHTML = logs.map(row => {
+                if (which === 'inbound') {
+                    let st = row[4]; if (!isNaN(st) && st !== '') st = new Date(Number(st)).toLocaleString();
+                    let et = row[5]; if (!isNaN(et) && et !== '') et = new Date(Number(et)).toLocaleString();
+                    return `<tr><td>${row[0]}</td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td><td>${st}</td><td>${et}</td><td>${row[6]}</td></tr>`;
+                } else {
+                    let st = row[3]; if (!isNaN(st) && st !== '') st = new Date(Number(st)).toLocaleString();
+                    let et = row[4]; if (!isNaN(et) && et !== '') et = new Date(Number(et)).toLocaleString();
+                    return `<tr><td>${row[0]}</td><td>${row[1]}</td><td>${row[2]}</td><td>${st}</td><td>${et}</td><td>${row[5]}</td></tr>`;
+                }
+            }).join('');
+        } catch {
+            document.getElementById(bodyId).innerHTML =
+                `<tr><td colspan="${cols}">Error loading log.</td></tr>`;
+        }
+    }
+
+    // ── EXPORT CSV ─────────────────────────────────────────
+    async function exportCSV(which) {
+        try {
+            const api  = which === 'inbound' ? REC_API : PULL_API;
+            const res  = await fetch(`${api}?action=GET_LOG&t=${Date.now()}`);
+            const data = await res.json();
+            const rows = data.slice(1).reverse();
+
+            let header, csvRows;
+            if (which === 'inbound') {
+                header = ['Door','Trailer','BOL','Type','Started','Ended','Duration'];
+                csvRows = [header, ...rows.map(row => {
+                    let st = row[4]; if (!isNaN(st) && st !== '') st = new Date(Number(st)).toLocaleString();
+                    let et = row[5]; if (!isNaN(et) && et !== '') et = new Date(Number(et)).toLocaleString();
+                    return [row[0], row[1], row[2], row[3], st, et, row[6]];
+                })];
+            } else {
+                header = ['Wave ID','Type','Qty','Started','Completed','Duration'];
+                csvRows = [header, ...rows.map(row => {
+                    let st = row[3]; if (!isNaN(st) && st !== '') st = new Date(Number(st)).toLocaleString();
+                    let et = row[4]; if (!isNaN(et) && et !== '') et = new Date(Number(et)).toLocaleString();
+                    return [row[0], row[1], row[2], st, et, row[5]];
+                })];
+            }
+
+            const csv  = csvRows.map(r => r.map(c => `"${String(c??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href     = url;
+            a.download = `${which}-log-${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch { alert('Failed to export. Please try again.'); }
+    }
+
+    // ── INIT ────────────────────────────────────────────────
+    setInterval(syncAll,   5000);
+    setInterval(renderAll, 1000);
+    syncAll();
+</script>
+</body>
+</html>
