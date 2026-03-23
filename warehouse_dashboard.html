@@ -532,6 +532,155 @@
 
         .card-close-btn:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
 
+        /* ── ANALYTICS OVERLAY ───────────────────────────────── */
+        #analytics-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 2000;
+            align-items: flex-start;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        #analytics-overlay.visible { display: flex; }
+
+        .analytics-modal {
+            background: #161b22;
+            border: 1.5px solid var(--border);
+            border-radius: 18px;
+            width: 100%;
+            max-width: 1400px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+            margin: auto;
+        }
+
+        .analytics-header {
+            padding: 18px 24px;
+            border-bottom: 1.5px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            background: #161b22;
+            z-index: 10;
+        }
+
+        .analytics-header h2 {
+            font-size: 20px; font-weight: 900;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+
+        .analytics-controls {
+            display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+        }
+
+        .range-btn {
+            padding: 6px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: 6px;
+            background: transparent;
+            color: var(--muted);
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 13px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .range-btn:hover { background: var(--border); color: var(--text); }
+        .range-btn.active { background: var(--panel-bg); color: var(--text); border-color: var(--muted); }
+
+        .analytics-body {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+        }
+
+        /* KPI summary row */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 12px;
+        }
+
+        .kpi-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            display: flex; flex-direction: column; gap: 4px;
+        }
+
+        .kpi-val {
+            font-size: 28px; font-weight: 900; line-height: 1;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .kpi-val.inbound  { color: var(--inbound); }
+        .kpi-val.outbound { color: var(--outbound); }
+        .kpi-val.success  { color: var(--success); }
+        .kpi-val.warning  { color: var(--warning); }
+        .kpi-val.danger   { color: var(--danger); }
+
+        .kpi-lbl {
+            font-size: 11px; font-weight: 700; color: var(--muted);
+            text-transform: uppercase; letter-spacing: 0.8px;
+        }
+
+        /* chart sections */
+        .chart-section {
+            display: flex; flex-direction: column; gap: 10px;
+        }
+
+        .chart-section-title {
+            font-size: 12px; font-weight: 900;
+            text-transform: uppercase; letter-spacing: 1.5px;
+            color: var(--muted);
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+        }
+
+        .chart-grid.single { grid-template-columns: 1fr; }
+        .chart-grid.triple { grid-template-columns: 1fr 1fr 1fr; }
+
+        .chart-box {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px 20px 14px;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+
+        .chart-box-title {
+            font-size: 12px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px;
+            color: var(--muted);
+        }
+
+        .chart-box canvas { width: 100% !important; }
+
+        .chart-loading {
+            display: flex; align-items: center; justify-content: center;
+            height: 180px; color: var(--muted); font-size: 13px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
         /* ── LOG OVERLAY ─────────────────────────────────────── */
         .log-overlay {
             display: none;
@@ -793,6 +942,7 @@
         <div class="log-btn-group">
             <button class="btn-log-inbound"  onclick="toggleLog('inbound')">📋 Inbound History</button>
             <button class="btn-log-outbound" onclick="toggleLog('outbound')">📋 Outbound History</button>
+            <button onclick="toggleAnalytics()" style="background:var(--panel-bg);border:1.5px solid var(--border);color:var(--text);font-weight:900;width:100%;padding:11px;border-radius:8px;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:14px;text-transform:uppercase;letter-spacing:0.5px;margin-top:8px;transition:background 0.15s;" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='var(--panel-bg)'">📊 Analytics</button>
         </div>
 
     </div>
@@ -883,6 +1033,118 @@
 
 </div>
 
+<!-- Analytics Overlay -->
+<div id="analytics-overlay">
+    <div class="analytics-modal">
+
+        <div class="analytics-header">
+            <h2>📊 Warehouse Analytics</h2>
+            <div class="analytics-controls">
+                <button class="range-btn" data-range="today"   onclick="setRange('today')">Today</button>
+                <button class="range-btn active" data-range="7d" onclick="setRange('7d')">7 Days</button>
+                <button class="range-btn" data-range="30d"  onclick="setRange('30d')">30 Days</button>
+                <button class="range-btn" data-range="all"  onclick="setRange('all')">All Time</button>
+                <button class="log-close-btn" onclick="toggleAnalytics()" style="margin-left:8px;">✕ Close</button>
+            </div>
+        </div>
+
+        <div class="analytics-body">
+
+            <!-- KPI Summary Row -->
+            <div class="kpi-row" id="kpi-row">
+                <div class="kpi-card"><div class="kpi-val inbound"  id="kpi-in-total">—</div><div class="kpi-lbl">Inbound Closed</div></div>
+                <div class="kpi-card"><div class="kpi-val inbound"  id="kpi-in-avg">—</div><div class="kpi-lbl">Inbound Avg Time</div></div>
+                <div class="kpi-card"><div class="kpi-val success"  id="kpi-in-sla">—</div><div class="kpi-lbl">Inbound SLA %</div></div>
+                <div class="kpi-card"><div class="kpi-val outbound" id="kpi-out-total">—</div><div class="kpi-lbl">Outbound Closed</div></div>
+                <div class="kpi-card"><div class="kpi-val outbound" id="kpi-out-avg-auto">—</div><div class="kpi-lbl">Auto Avg Time</div></div>
+                <div class="kpi-card"><div class="kpi-val outbound" id="kpi-out-avg-manual">—</div><div class="kpi-lbl">Manual Avg Time</div></div>
+                <div class="kpi-card"><div class="kpi-val success"  id="kpi-out-sla-auto">—</div><div class="kpi-lbl">Auto SLA %</div></div>
+                <div class="kpi-card"><div class="kpi-val success"  id="kpi-out-sla-manual">—</div><div class="kpi-lbl">Manual SLA %</div></div>
+            </div>
+
+            <!-- Volume Over Time -->
+            <div class="chart-section">
+                <div class="chart-section-title">Volume Over Time</div>
+                <div class="chart-grid">
+                    <div class="chart-box">
+                        <div class="chart-box-title">Inbound Receipts Per Day</div>
+                        <canvas id="chart-in-volume" height="180"></canvas>
+                    </div>
+                    <div class="chart-box">
+                        <div class="chart-box-title">Outbound Pulls Per Day</div>
+                        <canvas id="chart-out-volume" height="180"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Avg Duration Over Time -->
+            <div class="chart-section">
+                <div class="chart-section-title">Average Duration Trend</div>
+                <div class="chart-grid">
+                    <div class="chart-box">
+                        <div class="chart-box-title">Inbound Avg Duration Per Day (hrs)</div>
+                        <canvas id="chart-in-avg" height="180"></canvas>
+                    </div>
+                    <div class="chart-box">
+                        <div class="chart-box-title">Outbound Avg Duration Per Day (hrs)</div>
+                        <canvas id="chart-out-avg" height="180"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLA Compliance -->
+            <div class="chart-section">
+                <div class="chart-section-title">SLA Compliance</div>
+                <div class="chart-grid">
+                    <div class="chart-box">
+                        <div class="chart-box-title">Inbound SLA Compliance Over Time (%)</div>
+                        <canvas id="chart-in-sla" height="180"></canvas>
+                    </div>
+                    <div class="chart-box">
+                        <div class="chart-box-title">Outbound SLA Compliance — Auto vs Manual (%)</div>
+                        <canvas id="chart-out-sla" height="180"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Breakdown by Type -->
+            <div class="chart-section">
+                <div class="chart-section-title">Breakdown by Type</div>
+                <div class="chart-grid triple">
+                    <div class="chart-box">
+                        <div class="chart-box-title">Inbound — Manufacturer vs Transfer</div>
+                        <canvas id="chart-in-type" height="200"></canvas>
+                    </div>
+                    <div class="chart-box">
+                        <div class="chart-box-title">Outbound — Auto vs Manual Volume</div>
+                        <canvas id="chart-out-type-vol" height="200"></canvas>
+                    </div>
+                    <div class="chart-box">
+                        <div class="chart-box-title">Outbound — Auto vs Manual Avg Duration</div>
+                        <canvas id="chart-out-type-avg" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Peak Hours Heatmap -->
+            <div class="chart-section">
+                <div class="chart-section-title">Peak Activity Hours</div>
+                <div class="chart-grid">
+                    <div class="chart-box">
+                        <div class="chart-box-title">Inbound — Receipts Started by Hour of Day</div>
+                        <canvas id="chart-in-hours" height="180"></canvas>
+                    </div>
+                    <div class="chart-box">
+                        <div class="chart-box-title">Outbound — Pulls Started by Hour of Day</div>
+                        <canvas id="chart-out-hours" height="180"></canvas>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
 <!-- Inbound Log Overlay -->
 <div class="log-overlay" id="log-inbound">
     <div class="log-modal">
@@ -940,6 +1202,7 @@
     </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
     // ── API ENDPOINTS ───────────────────────────────────────
     const REC_API  = "https://script.google.com/macros/s/AKfycbzlqj_tnDRI6tGDy5MCjyq3XovJmoTCWhvhZqHKMjuDDjil7j6kcwyGHrjGnbYhXURaow/exec";
@@ -994,6 +1257,7 @@
         document.getElementById('syncStatus').style.color = online ? 'var(--success)' : 'var(--danger)';
 
         updateSummary();
+        invalidateAnalyticsCache();
     }
 
     // ── SHIFT SUMMARY ──────────────────────────────────────
@@ -1439,6 +1703,326 @@
             a.click();
             URL.revokeObjectURL(url);
         } catch { alert('Failed to export. Please try again.'); }
+    }
+
+    // ── ANALYTICS ───────────────────────────────────────────
+    let analyticsRange   = '7d';
+    let analyticsCharts  = {};
+    let inLogCache       = null;
+    let outLogCache      = null;
+
+    const CHART_DEFAULTS = {
+        responsive: true,
+        maintainAspectRatio: true,
+        animation: { duration: 400 },
+        plugins: { legend: { labels: { color: '#8b949e', font: { family: "'Barlow Condensed', sans-serif", size: 12 } } } },
+        scales: {
+            x: { ticks: { color: '#8b949e', font: { size: 11 } }, grid: { color: 'rgba(48,54,61,0.6)' } },
+            y: { ticks: { color: '#8b949e', font: { size: 11 } }, grid: { color: 'rgba(48,54,61,0.6)' } }
+        }
+    };
+
+    function toggleAnalytics() {
+        const ov = document.getElementById('analytics-overlay');
+        ov.classList.toggle('visible');
+        if (ov.classList.contains('visible')) loadAnalytics();
+    }
+
+    function setRange(range) {
+        analyticsRange = range;
+        document.querySelectorAll('.range-btn').forEach(b => b.classList.toggle('active', b.dataset.range === range));
+        loadAnalytics();
+    }
+
+    async function loadAnalytics() {
+        // fetch both logs (use cache to avoid hammering the API on range switch)
+        try {
+            if (!inLogCache) {
+                const r = await fetch(`${REC_API}?action=GET_LOG&t=${Date.now()}`);
+                const d = await r.json(); inLogCache = d.slice(1);
+            }
+        } catch { inLogCache = []; }
+
+        try {
+            if (!outLogCache) {
+                const r = await fetch(`${PULL_API}?action=GET_LOG&t=${Date.now()}`);
+                const d = await r.json(); outLogCache = d.slice(1);
+            }
+        } catch { outLogCache = []; }
+
+        const inRows  = filterByRange(inLogCache,  r => Number(r[5]));
+        const outRows = filterByRange(outLogCache, r => Number(r[4]));
+
+        drawKPIs(inRows, outRows);
+        drawVolumeCharts(inRows, outRows);
+        drawAvgCharts(inRows, outRows);
+        drawSLACharts(inRows, outRows);
+        drawTypeCharts(inRows, outRows);
+        drawHourCharts(inRows, outRows);
+    }
+
+    // force re-fetch on next open so new records are picked up
+    function invalidateAnalyticsCache() { inLogCache = null; outLogCache = null; }
+
+    function filterByRange(rows, getTs) {
+        const now   = Date.now();
+        const today = new Date(); today.setHours(0,0,0,0);
+        const cuts  = { today: today.getTime(), '7d': now - 7*864e5, '30d': now - 30*864e5, all: 0 };
+        const cut   = cuts[analyticsRange] || 0;
+        return rows.filter(r => { const ts = getTs(r); return !isNaN(ts) && ts >= cut; });
+    }
+
+    function msToHrs(ms) { return Math.round(ms / 36000) / 100; }
+    function minsToHrs(m) { return Math.round(m * 100 / 60) / 100; }
+
+    function groupByDay(rows, getTs) {
+        const map = {};
+        rows.forEach(r => {
+            const ts = getTs(r);
+            if (isNaN(ts)) return;
+            const d = new Date(ts);
+            const key = `${d.getMonth()+1}/${d.getDate()}`;
+            map[key] = (map[key] || 0) + 1;
+        });
+        return map;
+    }
+
+    function getDayLabels(rows, getTs) {
+        const keys = Object.keys(groupByDay(rows, getTs));
+        return keys.sort((a,b) => new Date(a+'/2000') - new Date(b+'/2000'));
+    }
+
+    function makeChart(id, type, data, extraOpts = {}) {
+        const canvas = document.getElementById(id);
+        if (!canvas) return;
+        if (analyticsCharts[id]) analyticsCharts[id].destroy();
+        analyticsCharts[id] = new Chart(canvas, {
+            type,
+            data,
+            options: deepMerge(JSON.parse(JSON.stringify(CHART_DEFAULTS)), extraOpts)
+        });
+    }
+
+    function deepMerge(target, source) {
+        for (const k in source) {
+            if (source[k] && typeof source[k] === 'object' && !Array.isArray(source[k])) {
+                target[k] = target[k] || {};
+                deepMerge(target[k], source[k]);
+            } else { target[k] = source[k]; }
+        }
+        return target;
+    }
+
+    // ── KPIs ────────────────────────────────────────────────
+    function drawKPIs(inRows, outRows) {
+        const inAvgMin  = avgMins(inRows.map(r => parseDuration(r[6])));
+        const inSla     = slaRate(inRows, r => parseDuration(r[6]), 300); // 5h = 300m
+        const autoRows  = outRows.filter(r => r[1]==='auto');
+        const manRows   = outRows.filter(r => r[1]==='manual');
+        const autoAvg   = avgMins(autoRows.map(r => parseDuration(r[5])));
+        const manAvg    = avgMins(manRows.map(r => parseDuration(r[5])));
+        const autoSla   = slaRate(autoRows,  r => parseDuration(r[5]), 300); // 5h
+        const manSla    = slaRate(manRows,   r => parseDuration(r[5]),  60); // 1h
+
+        document.getElementById('kpi-in-total').innerText       = inRows.length;
+        document.getElementById('kpi-in-avg').innerText         = inAvgMin  ? fmtAvg(inAvgMin)  : '—';
+        document.getElementById('kpi-in-sla').innerText         = inSla     !== null ? inSla+'%'  : '—';
+        document.getElementById('kpi-out-total').innerText      = outRows.length;
+        document.getElementById('kpi-out-avg-auto').innerText   = autoAvg   ? fmtAvg(autoAvg)   : '—';
+        document.getElementById('kpi-out-avg-manual').innerText = manAvg    ? fmtAvg(manAvg)    : '—';
+        document.getElementById('kpi-out-sla-auto').innerText   = autoSla   !== null ? autoSla+'%'  : '—';
+        document.getElementById('kpi-out-sla-manual').innerText = manSla    !== null ? manSla+'%'   : '—';
+
+        // color KPI SLA values
+        ['kpi-in-sla','kpi-out-sla-auto','kpi-out-sla-manual'].forEach(id => {
+            const el = document.getElementById(id);
+            const v  = parseInt(el.innerText);
+            el.className = 'kpi-val ' + (isNaN(v) ? 'success' : v >= 90 ? 'success' : v >= 70 ? 'warning' : 'danger');
+        });
+    }
+
+    function avgMins(arr) {
+        const f = arr.filter(d => d > 0);
+        return f.length ? Math.round(f.reduce((a,b)=>a+b,0)/f.length) : null;
+    }
+
+    function slaRate(rows, getDur, limitMin) {
+        if (!rows.length) return null;
+        const met = rows.filter(r => { const d = getDur(r); return d > 0 && d <= limitMin; }).length;
+        return Math.round(met / rows.length * 100);
+    }
+
+    // ── VOLUME CHARTS ────────────────────────────────────────
+    function drawVolumeCharts(inRows, outRows) {
+        const inDays  = groupByDay(inRows,  r => Number(r[5]));
+        const outDays = groupByDay(outRows, r => Number(r[4]));
+        const inLabels  = Object.keys(inDays).sort();
+        const outLabels = Object.keys(outDays).sort();
+
+        makeChart('chart-in-volume', 'bar', {
+            labels: inLabels,
+            datasets: [{ label: 'Receipts', data: inLabels.map(d => inDays[d]),
+                backgroundColor: 'rgba(240,165,0,0.7)', borderColor: '#f0a500', borderWidth: 1, borderRadius: 4 }]
+        }, { plugins: { legend: { display: false } } });
+
+        makeChart('chart-out-volume', 'bar', {
+            labels: outLabels,
+            datasets: [
+                { label: 'Auto',   data: outLabels.map(d => groupByDay(outRows.filter(r=>r[1]==='auto'),   r=>Number(r[4]))[d] || 0),
+                  backgroundColor: 'rgba(49,130,206,0.7)', borderColor: '#3182ce', borderWidth: 1, borderRadius: 4 },
+                { label: 'Manual', data: outLabels.map(d => groupByDay(outRows.filter(r=>r[1]==='manual'), r=>Number(r[4]))[d] || 0),
+                  backgroundColor: 'rgba(49,130,206,0.3)', borderColor: '#3182ce', borderWidth: 1, borderRadius: 4 }
+            ]
+        });
+    }
+
+    // ── AVG DURATION CHARTS ──────────────────────────────────
+    function drawAvgCharts(inRows, outRows) {
+        function avgByDay(rows, getTs, getDur) {
+            const map = {};
+            rows.forEach(r => {
+                const ts = getTs(r); if (isNaN(ts)) return;
+                const d  = new Date(ts);
+                const k  = `${d.getMonth()+1}/${d.getDate()}`;
+                if (!map[k]) map[k] = [];
+                const dur = getDur(r); if (dur > 0) map[k].push(dur);
+            });
+            return map;
+        }
+
+        const inMap   = avgByDay(inRows, r=>Number(r[5]), r=>parseDuration(r[6]));
+        const inLabels = Object.keys(inMap).sort();
+        makeChart('chart-in-avg', 'line', {
+            labels: inLabels,
+            datasets: [{ label: 'Avg Hrs', data: inLabels.map(d => {
+                const a = avgMins(inMap[d]); return a ? minsToHrs(a) : null;
+            }), borderColor: '#f0a500', backgroundColor: 'rgba(240,165,0,0.1)',
+                tension: 0.3, fill: true, pointRadius: 4, pointBackgroundColor: '#f0a500' }]
+        }, { plugins: { legend: { display: false } } });
+
+        const autoMap   = avgByDay(outRows.filter(r=>r[1]==='auto'),   r=>Number(r[4]), r=>parseDuration(r[5]));
+        const manMap    = avgByDay(outRows.filter(r=>r[1]==='manual'), r=>Number(r[4]), r=>parseDuration(r[5]));
+        const allDays   = [...new Set([...Object.keys(autoMap), ...Object.keys(manMap)])].sort();
+        makeChart('chart-out-avg', 'line', {
+            labels: allDays,
+            datasets: [
+                { label: 'Auto Avg Hrs', data: allDays.map(d => { const a = avgMins(autoMap[d]||[]); return a ? minsToHrs(a) : null; }),
+                  borderColor: '#3182ce', backgroundColor: 'rgba(49,130,206,0.1)', tension: 0.3, fill: false, pointRadius: 4, pointBackgroundColor: '#3182ce' },
+                { label: 'Manual Avg Hrs', data: allDays.map(d => { const a = avgMins(manMap[d]||[]); return a ? minsToHrs(a) : null; }),
+                  borderColor: '#63b3ed', backgroundColor: 'rgba(99,179,237,0.1)', tension: 0.3, fill: false, pointRadius: 4, pointBackgroundColor: '#63b3ed', borderDash: [5,3] }
+            ]
+        });
+    }
+
+    // ── SLA CHARTS ───────────────────────────────────────────
+    function drawSLACharts(inRows, outRows) {
+        function slaByDay(rows, getTs, getDur, limitMin) {
+            const map = {};
+            rows.forEach(r => {
+                const ts = getTs(r); if (isNaN(ts)) return;
+                const d  = new Date(ts);
+                const k  = `${d.getMonth()+1}/${d.getDate()}`;
+                if (!map[k]) map[k] = { met:0, total:0 };
+                map[k].total++;
+                const dur = getDur(r);
+                if (dur > 0 && dur <= limitMin) map[k].met++;
+            });
+            return map;
+        }
+
+        const inSlaMap = slaByDay(inRows, r=>Number(r[5]), r=>parseDuration(r[6]), 300);
+        const inLabels  = Object.keys(inSlaMap).sort();
+        makeChart('chart-in-sla', 'line', {
+            labels: inLabels,
+            datasets: [{ label: 'SLA %', data: inLabels.map(d => {
+                const s = inSlaMap[d]; return s.total ? Math.round(s.met/s.total*100) : null;
+            }), borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)',
+                tension: 0.3, fill: true, pointRadius: 4, pointBackgroundColor: '#22c55e' }]
+        }, { plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } } });
+
+        const autoSla   = slaByDay(outRows.filter(r=>r[1]==='auto'),   r=>Number(r[4]), r=>parseDuration(r[5]), 300);
+        const manSla    = slaByDay(outRows.filter(r=>r[1]==='manual'), r=>Number(r[4]), r=>parseDuration(r[5]),  60);
+        const allDays   = [...new Set([...Object.keys(autoSla),...Object.keys(manSla)])].sort();
+        makeChart('chart-out-sla', 'line', {
+            labels: allDays,
+            datasets: [
+                { label: 'Auto SLA %', data: allDays.map(d => {
+                    const s = autoSla[d]; return s ? Math.round(s.met/s.total*100) : null;
+                }), borderColor: '#3182ce', backgroundColor: 'rgba(49,130,206,0.1)',
+                    tension: 0.3, fill: false, pointRadius: 4, pointBackgroundColor: '#3182ce' },
+                { label: 'Manual SLA %', data: allDays.map(d => {
+                    const s = manSla[d]; return s ? Math.round(s.met/s.total*100) : null;
+                }), borderColor: '#63b3ed', backgroundColor: 'rgba(99,179,237,0.1)',
+                    tension: 0.3, fill: false, pointRadius: 4, pointBackgroundColor: '#63b3ed', borderDash: [5,3] }
+            ]
+        }, { scales: { y: { min: 0, max: 100 } } });
+    }
+
+    // ── TYPE BREAKDOWN CHARTS ────────────────────────────────
+    function drawTypeCharts(inRows, outRows) {
+        const mfr  = inRows.filter(r => r[3]==='Manufacturer').length;
+        const xfr  = inRows.filter(r => r[3]==='Transfer').length;
+        makeChart('chart-in-type', 'doughnut', {
+            labels: ['Manufacturer', 'Transfer'],
+            datasets: [{ data: [mfr, xfr],
+                backgroundColor: ['rgba(240,165,0,0.85)', 'rgba(240,165,0,0.35)'],
+                borderColor: ['#f0a500','#f0a500'], borderWidth: 2 }]
+        }, { scales: {} });
+
+        const autoVol = outRows.filter(r=>r[1]==='auto').length;
+        const manVol  = outRows.filter(r=>r[1]==='manual').length;
+        makeChart('chart-out-type-vol', 'doughnut', {
+            labels: ['Auto', 'Manual'],
+            datasets: [{ data: [autoVol, manVol],
+                backgroundColor: ['rgba(49,130,206,0.85)', 'rgba(49,130,206,0.35)'],
+                borderColor: ['#3182ce','#3182ce'], borderWidth: 2 }]
+        }, { scales: {} });
+
+        const autoA = avgMins(outRows.filter(r=>r[1]==='auto')  .map(r=>parseDuration(r[5])));
+        const manA  = avgMins(outRows.filter(r=>r[1]==='manual').map(r=>parseDuration(r[5])));
+        makeChart('chart-out-type-avg', 'bar', {
+            labels: ['Auto', 'Manual'],
+            datasets: [{ label: 'Avg Hours', data: [autoA ? minsToHrs(autoA) : 0, manA ? minsToHrs(manA) : 0],
+                backgroundColor: ['rgba(49,130,206,0.8)', 'rgba(49,130,206,0.4)'],
+                borderColor: '#3182ce', borderWidth: 1, borderRadius: 6 }]
+        }, { plugins: { legend: { display: false } },
+             scales: { x: { ticks: { color: '#8b949e' } }, y: { ticks: { color: '#8b949e' }, beginAtZero: true } } });
+    }
+
+    // ── PEAK HOURS CHARTS ────────────────────────────────────
+    function drawHourCharts(inRows, outRows) {
+        function hourCounts(rows, getTs) {
+            const counts = Array(24).fill(0);
+            rows.forEach(r => {
+                const ts = getTs(r); if (isNaN(ts)) return;
+                counts[new Date(ts).getHours()]++;
+            });
+            return counts;
+        }
+
+        const hrLabels = Array.from({length:24}, (_,i) => {
+            const h = i % 12 || 12; return `${h}${i < 12 ? 'a' : 'p'}`;
+        });
+
+        const inHrs  = hourCounts(inRows,  r => Number(r[4])); // startTime col 4
+        const outHrs = hourCounts(outRows, r => Number(r[3])); // startTime col 3
+
+        const inMax  = Math.max(...inHrs);
+        const outMax = Math.max(...outHrs);
+
+        makeChart('chart-in-hours', 'bar', {
+            labels: hrLabels,
+            datasets: [{ label: 'Receipts Started', data: inHrs,
+                backgroundColor: inHrs.map(v => `rgba(240,165,0,${v === inMax && v > 0 ? 0.9 : 0.4})`),
+                borderColor: '#f0a500', borderWidth: 1, borderRadius: 3 }]
+        }, { plugins: { legend: { display: false } } });
+
+        makeChart('chart-out-hours', 'bar', {
+            labels: hrLabels,
+            datasets: [{ label: 'Pulls Started', data: outHrs,
+                backgroundColor: outHrs.map(v => `rgba(49,130,206,${v === outMax && v > 0 ? 0.9 : 0.4})`),
+                borderColor: '#3182ce', borderWidth: 1, borderRadius: 3 }]
+        }, { plugins: { legend: { display: false } } });
     }
 
     // ── INIT ────────────────────────────────────────────────
