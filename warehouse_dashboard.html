@@ -693,6 +693,14 @@
                     <span class="summary-lbl">Avg</span>
                     <span class="summary-val inbound" id="in-avg">—</span>
                 </div>
+                <div class="summary-row" style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">
+                    <span class="summary-lbl" style="color:var(--inbound);opacity:0.7;">Today Closed</span>
+                    <span class="summary-val inbound" id="in-closed-today">0</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-lbl" style="color:var(--inbound);opacity:0.7;">Today Avg</span>
+                    <span class="summary-val inbound" id="in-avg-today">—</span>
+                </div>
             </div>
             <div class="summary-col">
                 <div class="summary-col-label outbound">▲ Outbound</div>
@@ -711,6 +719,18 @@
                 <div class="summary-row">
                     <span class="summary-lbl">Manual Avg</span>
                     <span class="summary-val outbound" id="out-avg-manual">—</span>
+                </div>
+                <div class="summary-row" style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">
+                    <span class="summary-lbl" style="color:var(--outbound);opacity:0.7;">Today Closed</span>
+                    <span class="summary-val outbound" id="out-closed-today">0</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-lbl" style="color:var(--outbound);opacity:0.7;">Auto Avg</span>
+                    <span class="summary-val outbound" id="out-avg-auto-today">—</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-lbl" style="color:var(--outbound);opacity:0.7;">Manual Avg</span>
+                    <span class="summary-val outbound" id="out-avg-manual-today">—</span>
                 </div>
             </div>
         </div>
@@ -799,6 +819,16 @@
                 <span class="stat-val inbound" id="sec-in-avg">—</span>
                 <span class="stat-lbl">Avg</span>
             </div>
+            <div class="stat-sep" style="background:rgba(240,165,0,0.2);"></div>
+            <div class="stat-pill inbound" style="background:rgba(240,165,0,0.06);outline:1px solid rgba(240,165,0,0.2);outline-offset:-1px;">
+                <span class="stat-val inbound" id="sec-in-closed-today">0</span>
+                <span class="stat-lbl">Today Closed</span>
+            </div>
+            <div class="stat-sep"></div>
+            <div class="stat-pill inbound" style="background:rgba(240,165,0,0.06);outline:1px solid rgba(240,165,0,0.2);outline-offset:-1px;">
+                <span class="stat-val inbound" id="sec-in-avg-today">—</span>
+                <span class="stat-lbl">Today Avg</span>
+            </div>
         </div>
         <div class="section-line inbound"></div>
     </div>
@@ -827,6 +857,21 @@
             <div class="stat-sep"></div>
             <div class="stat-pill outbound">
                 <span class="stat-val outbound" id="sec-out-avg-manual">—</span>
+                <span class="stat-lbl">Manual Avg</span>
+            </div>
+            <div class="stat-sep" style="background:rgba(49,130,206,0.2);"></div>
+            <div class="stat-pill outbound" style="background:rgba(49,130,206,0.06);outline:1px solid rgba(49,130,206,0.2);outline-offset:-1px;">
+                <span class="stat-val outbound" id="sec-out-closed-today">0</span>
+                <span class="stat-lbl">Today Closed</span>
+            </div>
+            <div class="stat-sep"></div>
+            <div class="stat-pill outbound" style="background:rgba(49,130,206,0.06);outline:1px solid rgba(49,130,206,0.2);outline-offset:-1px;">
+                <span class="stat-val outbound" id="sec-out-avg-auto-today">—</span>
+                <span class="stat-lbl">Auto Avg</span>
+            </div>
+            <div class="stat-sep"></div>
+            <div class="stat-pill outbound" style="background:rgba(49,130,206,0.06);outline:1px solid rgba(49,130,206,0.2);outline-offset:-1px;">
+                <span class="stat-val outbound" id="sec-out-avg-manual-today">—</span>
                 <span class="stat-lbl">Manual Avg</span>
             </div>
         </div>
@@ -956,37 +1001,76 @@
         document.getElementById('in-active').innerText  = Object.keys(activeRecs).length;
         document.getElementById('out-active').innerText = Object.keys(activeWaves).length;
 
+        // helper: midnight timestamp for today
+        const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+        const todayMs    = todayStart.getTime();
+
+        // helper: compute avg from array of minute values
+        function avg(arr) {
+            const f = arr.filter(d => d > 0);
+            return f.length ? Math.round(f.reduce((a,b)=>a+b,0) / f.length) : null;
+        }
+
+        // ── INBOUND ─────────────────────────────────────────
         try {
             const r    = await fetch(`${REC_API}?action=GET_LOG&t=${Date.now()}`);
             const data = await r.json();
             const rows = data.slice(1);
+
+            // endTime is row[5], duration is row[6]
+            const todayRows = rows.filter(r => {
+                const ts = Number(r[5]);
+                return !isNaN(ts) && ts >= todayMs;
+            });
+
+            const allAvg   = avg(rows.map(r => parseDuration(r[6])));
+            const todayAvg = avg(todayRows.map(r => parseDuration(r[6])));
+
+            // sidebar
             document.getElementById('in-closed').innerText     = rows.length;
-            document.getElementById('sec-in-closed').innerText = rows.length;
-            const durs = rows.map(r => parseDuration(r[6])).filter(d => d > 0);
-            if (durs.length) {
-                const avg = Math.round(durs.reduce((a,b)=>a+b,0)/durs.length);
-                document.getElementById('in-avg').innerText     = fmtAvg(avg);
-                document.getElementById('sec-in-avg').innerText = fmtAvg(avg);
-            }
+            document.getElementById('in-avg').innerText        = allAvg   ? fmtAvg(allAvg)   : '—';
+            document.getElementById('in-closed-today').innerText = todayRows.length;
+            document.getElementById('in-avg-today').innerText  = todayAvg ? fmtAvg(todayAvg) : '—';
+
+            // section header
+            document.getElementById('sec-in-closed').innerText      = rows.length;
+            document.getElementById('sec-in-avg').innerText         = allAvg   ? fmtAvg(allAvg)   : '—';
+            document.getElementById('sec-in-closed-today').innerText = todayRows.length;
+            document.getElementById('sec-in-avg-today').innerText   = todayAvg ? fmtAvg(todayAvg) : '—';
         } catch {}
 
+        // ── OUTBOUND ────────────────────────────────────────
         try {
             const r    = await fetch(`${PULL_API}?action=GET_LOG&t=${Date.now()}`);
             const data = await r.json();
             const rows = data.slice(1);
-            document.getElementById('out-closed').innerText     = rows.length;
-            document.getElementById('sec-out-closed').innerText = rows.length;
 
-            const autoDurs   = rows.filter(r => r[1] === 'auto')  .map(r => parseDuration(r[5])).filter(d => d > 0);
-            const manualDurs = rows.filter(r => r[1] === 'manual').map(r => parseDuration(r[5])).filter(d => d > 0);
+            // endTime is row[4], type is row[1], duration is row[5]
+            const todayRows   = rows.filter(r => {
+                const ts = Number(r[4]);
+                return !isNaN(ts) && ts >= todayMs;
+            });
 
-            const autoAvg   = autoDurs.length   ? Math.round(autoDurs.reduce((a,b)=>a+b,0)   / autoDurs.length)   : null;
-            const manualAvg = manualDurs.length ? Math.round(manualDurs.reduce((a,b)=>a+b,0) / manualDurs.length) : null;
+            const autoAll     = avg(rows.filter(r => r[1]==='auto')  .map(r => parseDuration(r[5])));
+            const manualAll   = avg(rows.filter(r => r[1]==='manual').map(r => parseDuration(r[5])));
+            const autoToday   = avg(todayRows.filter(r => r[1]==='auto')  .map(r => parseDuration(r[5])));
+            const manualToday = avg(todayRows.filter(r => r[1]==='manual').map(r => parseDuration(r[5])));
 
-            document.getElementById('out-avg').innerText             = autoAvg   ? fmtAvg(autoAvg)   : '—';
-            document.getElementById('out-avg-manual').innerText       = manualAvg ? fmtAvg(manualAvg) : '—';
-            document.getElementById('sec-out-avg-auto').innerText    = autoAvg   ? fmtAvg(autoAvg)   : '—';
-            document.getElementById('sec-out-avg-manual').innerText  = manualAvg ? fmtAvg(manualAvg) : '—';
+            // sidebar
+            document.getElementById('out-closed').innerText          = rows.length;
+            document.getElementById('out-avg').innerText             = autoAll   ? fmtAvg(autoAll)   : '—';
+            document.getElementById('out-avg-manual').innerText      = manualAll ? fmtAvg(manualAll) : '—';
+            document.getElementById('out-closed-today').innerText    = todayRows.length;
+            document.getElementById('out-avg-auto-today').innerText   = autoToday   ? fmtAvg(autoToday)   : '—';
+            document.getElementById('out-avg-manual-today').innerText = manualToday ? fmtAvg(manualToday) : '—';
+
+            // section header
+            document.getElementById('sec-out-closed').innerText          = rows.length;
+            document.getElementById('sec-out-avg-auto').innerText        = autoAll   ? fmtAvg(autoAll)   : '—';
+            document.getElementById('sec-out-avg-manual').innerText      = manualAll ? fmtAvg(manualAll) : '—';
+            document.getElementById('sec-out-closed-today').innerText    = todayRows.length;
+            document.getElementById('sec-out-avg-auto-today').innerText   = autoToday   ? fmtAvg(autoToday)   : '—';
+            document.getElementById('sec-out-avg-manual-today').innerText = manualToday ? fmtAvg(manualToday) : '—';
         } catch {}
     }
 
