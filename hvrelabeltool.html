@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SKU Lookup Tool</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        body { font-family: sans-serif; margin: 20px; line-height: 1.6; }
+        textarea { width: 100%; height: 150px; margin-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f4f4f4; }
+        .high-value { color: #d9534f; font-weight: bold; }
+        .relabel { color: #f0ad4e; font-weight: bold; }
+        #status { font-weight: bold; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <h2>High Value & Relabel Lookup</h2>
+    <div id="status">Loading data from GitHub...</div>
+
+    <p>Paste SKU list (one per line):</p>
+    <textarea id="skuInput" placeholder="Enter SKUs here..."></textarea>
+    <button onclick="processSKUs()" id="btnProcess" disabled>Process SKUs</button>
+
+    <table id="resultsTable">
+        <thead>
+            <tr>
+                <th>SKU Number</th>
+                <th>Description</th>
+                <th>High Value?</th>
+                <th>Relabel?</th>
+                <th>New SKU</th>
+            </tr>
+        </thead>
+        <tbody id="resultsBody"></tbody>
+    </table>
+
+    <script>
+        let hvData = {};
+        let relabelData = {};
+
+        const hvUrl = 'https://dwilliams901.github.io/cevatest/hv_list.csv';
+        const relabelUrl = 'https://dwilliams901.github.io/cevatest/relabel_list.csv';
+
+        // Load Data on startup
+        async function loadData() {
+            try {
+                const [hvRes, relabelRes] = await Promise.all([
+                    fetch(hvUrl).then(r => r.text()),
+                    fetch(relabelUrl).then(r => r.text())
+                ]);
+
+                // Map HV: Key = Col A (SKU), Value = Col B (Desc)
+                Papa.parse(hvRes, {
+                    header: false,
+                    complete: (results) => {
+                        results.data.forEach(row => {
+                            if(row[0]) hvData[row[0].trim()] = row[1];
+                        });
+                    }
+                });
+
+                // Map Relabel: Key = Col E (Index 4), Value = {Desc: Col B (Index 1), NewSKU: Col A (Index 0)}
+                Papa.parse(relabelRes, {
+                    header: false,
+                    complete: (results) => {
+                        results.data.forEach(row => {
+                            if(row[4]) {
+                                relabelData[row[4].trim()] = {
+                                    desc: row[1],
+                                    newSku: row[0]
+                                };
+                            }
+                        });
+                        document.getElementById('status').innerText = "Data Loaded Successfully.";
+                        document.getElementById('btnProcess').disabled = false;
+                    }
+                });
+            } catch (error) {
+                document.getElementById('status').innerText = "Error loading CSVs. Check filepaths or CORS settings.";
+                console.error(error);
+            }
+        }
+
+        function processSKUs() {
+            const input = document.getElementById('skuInput').value;
+            const skus = input.split('\n').map(s => s.trim()).filter(s => s !== "");
+            const tbody = document.getElementById('resultsBody');
+            tbody.innerHTML = "";
+
+            skus.forEach(sku => {
+                const isHV = hvData[sku] !== undefined;
+                const relabelInfo = relabelData[sku];
+                
+                // Priority: Use Relabel description if available, otherwise HV description, otherwise blank
+                const description = relabelInfo ? relabelInfo.desc : (hvData[sku] || "Not Found");
+
+                const row = `
+                    <tr>
+                        <td>${sku}</td>
+                        <td>${description}</td>
+                        <td class="${isHV ? 'high-value' : ''}">${isHV ? 'YES' : 'No'}</td>
+                        <td class="${relabelInfo ? 'relabel' : ''}">${relabelInfo ? 'YES' : 'No'}</td>
+                        <td>${relabelInfo ? relabelInfo.newSku : 'N/A'}</td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+
+        loadData();
+    </script>
+</body>
+</html>
